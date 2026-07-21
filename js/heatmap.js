@@ -8,6 +8,7 @@ const Heatmap = {
   margin: { top: 10, right: 10, bottom: 30, left: 70 },
 
   render(containerId, rows, onCellClick) {
+    // Build all 168 day/hour combinations, including cells with no records.
     const { days, cells } = DataUtils.heatmapData(rows);
     const container = d3.select('#' + containerId);
     container.selectAll('*').remove();
@@ -21,13 +22,15 @@ const Heatmap = {
     const svg = container.append('svg').attr('width', width).attr('height', height);
     const g = svg.append('g').attr('transform', `translate(${m.left},${m.top})`);
 
+    // Two categorical band scales form the 24-column by 7-row matrix.
     const x = d3.scaleBand().domain(d3.range(24)).range([0, innerW]).padding(0.05);
     const y = d3.scaleBand().domain(days).range([0, innerH]).padding(0.05);
     const maxRate = d3.max(cells, d => d.fraudRate) || 0.01;
-    const color = d3.scaleSequential(d3.interpolateYlOrRd).domain([0, maxRate]);
+    const color = d3.scaleSequential(d3.interpolateOrRd).domain([0, maxRate]);
 
     const tooltip = this._tooltip();
 
+    // Darker orange/red cells represent higher observed fraud rates.
     g.selectAll('rect')
       .data(cells)
       .enter()
@@ -36,8 +39,8 @@ const Heatmap = {
       .attr('y', d => y(d.day))
       .attr('width', x.bandwidth())
       .attr('height', y.bandwidth())
-      .attr('fill', d => d.count ? color(d.fraudRate) : '#16294a')
-      .attr('stroke', '#0a1628')
+      .attr('fill', d => d.count ? color(d.fraudRate) : '#f1f3f6')
+      .attr('stroke', '#ffffff')
       .style('cursor', 'pointer')
       .on('mousemove', (event, d) => {
         tooltip.style('opacity', 1)
@@ -48,6 +51,7 @@ const Heatmap = {
       .on('mouseleave', () => tooltip.style('opacity', 0))
       .on('click', (event, d) => onCellClick && onCellClick(d));
 
+    // Only label every third hour to avoid crowding the horizontal axis.
     g.append('g')
       .attr('transform', `translate(0,${innerH})`)
       .call(d3.axisBottom(x).tickValues(d3.range(0, 24, 3)).tickFormat(h => h + ':00'))
@@ -57,6 +61,7 @@ const Heatmap = {
       .call(d3.axisLeft(y).tickFormat(d => d.slice(0, 3)));
   },
 
+  // Create one persistent tooltip and reuse it during later filter redraws.
   _tooltip() {
     let t = d3.select('body').select('.tooltip.heatmap-tt');
     if (t.empty()) {

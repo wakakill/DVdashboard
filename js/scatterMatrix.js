@@ -9,12 +9,14 @@
 const ScatterMatrix = {
 
   render(containerId, rows) {
+    // Every variable appears as both a row and a column in the 3×3 matrix.
     const vars = [
       { key: 'amt', label: 'Amount ($)' },
       { key: 'age', label: 'Age' },
       { key: 'distance_km', label: 'Distance (km)' }
     ];
-    const data = DataUtils.scatterSample(rows, 1500);
+    // A stratified display sample prevents 100,000 SVG points from freezing the browser.
+    const data = DataUtils.scatterSample(rows, 600);
 
     const container = d3.select('#' + containerId);
     container.selectAll('*').remove();
@@ -30,22 +32,25 @@ const ScatterMatrix = {
 
     const tooltip = this._tooltip();
 
+    // Each variable needs its own numerical scale because units differ.
     const scales = vars.map(v => d3.scaleLinear()
       .domain(d3.extent(data, d => d[v.key])).nice()
       .range([0, size]));
 
+    // Nested loops create the nine matrix cells.
     for (let row = 0; row < n; row++) {
       for (let col = 0; col < n; col++) {
         const gx = 40 + col * (size + pad);
         const gy = 20 + row * (size + pad);
         const g = svg.append('g').attr('transform', `translate(${gx},${gy})`);
 
+        // Diagonal cells name variables; off-diagonal cells show relationships.
         if (row === col) {
           g.append('rect').attr('width', size).attr('height', size)
-            .attr('fill', '#16294a').attr('stroke', '#1f3a63');
+            .attr('fill', '#f8f9fb').attr('stroke', '#d7dce3');
           g.append('text')
             .attr('x', size / 2).attr('y', size / 2)
-            .attr('text-anchor', 'middle').attr('fill', '#b8c2d4')
+            .attr('text-anchor', 'middle').attr('fill', '#566174')
             .style('font-size', '11px')
             .text(vars[row].label);
           continue;
@@ -53,17 +58,18 @@ const ScatterMatrix = {
 
         const xScale = scales[col], yScale = scales[row];
         g.append('rect').attr('width', size).attr('height', size)
-          .attr('fill', 'none').attr('stroke', '#1f3a63');
+          .attr('fill', '#ffffff').attr('stroke', '#d7dce3');
 
+        // Fraud points use red and higher opacity; legitimate points stay subtle.
         g.selectAll('circle')
           .data(data)
           .enter()
           .append('circle')
           .attr('cx', d => xScale(d[vars[col].key]))
           .attr('cy', d => size - yScale(d[vars[row].key]))
-          .attr('r', 2.5)
-          .attr('fill', d => d.is_fraud ? '#e2554f' : '#4a7fb5')
-          .attr('opacity', d => d.is_fraud ? 0.9 : 0.35)
+          .attr('r', 2.2)
+          .attr('fill', d => d.is_fraud ? '#c92a3b' : '#5b52eb')
+          .attr('opacity', d => d.is_fraud ? 0.62 : 0.14)
           .on('mousemove', (event, d) => {
             tooltip.style('opacity', 1)
               .style('left', (event.pageX + 12) + 'px')
@@ -74,13 +80,14 @@ const ScatterMatrix = {
 
         if (row === n - 1) {
           g.append('text').attr('x', size / 2).attr('y', size + 16)
-            .attr('text-anchor', 'middle').style('font-size', '9px').attr('fill', '#7c8aa3')
+            .attr('text-anchor', 'middle').style('font-size', '9px').attr('fill', '#566174')
             .text(vars[col].label);
         }
       }
     }
   },
 
+  // Reuse a single tooltip across all six plotted matrix cells.
   _tooltip() {
     let t = d3.select('body').select('.tooltip.scatter-tt');
     if (t.empty()) {

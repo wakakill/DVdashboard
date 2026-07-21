@@ -1,127 +1,134 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Finance Fraud & Spending Dashboard</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
-<link rel="stylesheet" href="css/style.css">
+  <!-- Basic page metadata and responsive browser settings -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Accessible fraud and spending intelligence dashboard for 100,000 sampled transactions.">
+  <title>FraudWatch — Transaction Risk Intelligence</title>
+  <!-- D3 is stored locally so the dashboard can run without a CDN connection -->
+  <script src="vendor/d3.v7.min.js"></script>
+  <!-- Main visual theme and responsive layout rules -->
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="mode-analyst">
+  <!-- Keyboard users can bypass the header and jump directly to the dashboard -->
+  <a class="skip-link" href="#main-content">Skip to dashboard</a>
 
-  <header class="topbar">
-    <div class="brand">
-      <span class="brand-mark">FinScope</span>
-      <span class="brand-sub">Fraud &amp; Spending Intelligence</span>
+  <!-- ===================== SHARED PAGE HEADER ===================== -->
+  <header class="app-header">
+    <!-- Dashboard identity and short description -->
+    <div class="brand-lockup">
+      <div class="brand-icon" aria-hidden="true">
+        <svg viewBox="0 0 48 48"><path d="M24 4 40 10v12c0 10.5-6.5 17.3-16 22C14.5 39.3 8 32.5 8 22V10L24 4Z"/><path d="m16 25 5-5 4 4 8-9"/></svg>
+      </div>
+      <div>
+        <p class="eyebrow">Finance · Fraud detection indicators</p>
+        <h1>FraudWatch <span>— Transaction Risk Intelligence</span></h1>
+        <p class="brand-subtitle">Explore patterns, investigate alerts, and prioritise action from the supplied fraud sample.</p>
+      </div>
     </div>
 
+    <!-- Buttons switch between the four audience/task views without reloading the page -->
     <nav class="mode-toggle" role="tablist" aria-label="Dashboard mode">
-      <button class="mode-btn active" data-mode="analyst" role="tab" aria-selected="true">Analyst</button>
-      <button class="mode-btn" data-mode="elderly" role="tab" aria-selected="false">Simplified</button>
-      <button class="mode-btn" data-mode="kids" role="tab" aria-selected="false">Money Habits</button>
-      <button class="mode-btn" data-mode="timeline" role="tab" aria-selected="false">Project Timeline</button>
+      <button class="mode-btn active" data-mode="analyst" role="tab" aria-selected="true">▦ Analyst</button>
+      <button class="mode-btn" data-mode="elderly" role="tab" aria-selected="false">A+ Simplified</button>
+      <button class="mode-btn" data-mode="kids" role="tab" aria-selected="false">◎ Money Habits</button>
+      <button class="mode-btn" data-mode="timeline" role="tab" aria-selected="false">◫ Timeline</button>
     </nav>
   </header>
 
-  <!-- ===================== ANALYST VIEW ===================== -->
-  <main id="view-analyst" class="view">
+  <main id="main-content">
+    <!-- ===================== ANALYST VIEW ===================== -->
+    <section id="view-analyst" class="view">
+      <!-- View heading and the fixed time period covered by the supplied dataset -->
+      <section class="section-intro">
+        <div><p class="eyebrow">Coordinated fraud exploration</p><h2>Transaction overview</h2></div>
+        <p class="dataset-period"><span></span> Dataset period: Jan 2019 – Dec 2020</p>
+      </section>
 
-    <section class="kpi-row" id="kpi-cards"></section>
+      <!-- Global filters: every control updates the KPI cards, charts and table together -->
+      <section class="filters-bar" aria-label="Dashboard filters">
+        <div class="filter-group"><label for="filter-start">From</label><input type="date" id="filter-start"></div>
+        <div class="filter-group"><label for="filter-end">To</label><input type="date" id="filter-end"></div>
+        <div class="filter-group"><label for="filter-category">Category</label><select id="filter-category" multiple size="1"></select></div>
+        <div class="filter-group"><label for="filter-state">State</label><select id="filter-state" multiple size="1"></select></div>
+        <!-- Accessible switch that restricts the complete dashboard to labelled fraud cases -->
+        <label class="fraud-toggle" for="filter-fraud-only">
+          <input type="checkbox" id="filter-fraud-only">
+          <span class="toggle-track" aria-hidden="true"><span></span></span>
+          <span class="toggle-copy"><strong>Fraud only</strong><small>Show labelled alerts</small></span>
+        </label>
+        <button id="filter-reset" class="btn-reset" type="button">↶ Reset</button>
+        <span id="active-crossfilter" class="crossfilter-chip" hidden></span>
+      </section>
 
-    <section class="filters-bar">
-      <div class="filter-group">
-        <label for="filter-start">From</label>
-        <input type="date" id="filter-start">
-      </div>
-      <div class="filter-group">
-        <label for="filter-end">To</label>
-        <input type="date" id="filter-end">
-      </div>
-      <div class="filter-group">
-        <label for="filter-category">Category</label>
-        <select id="filter-category" multiple size="1"></select>
-      </div>
-      <div class="filter-group">
-        <label for="filter-state">State</label>
-        <select id="filter-state" multiple size="1"></select>
-      </div>
-      <div class="filter-group">
-        <label for="filter-search">Search merchant</label>
-        <input type="text" id="filter-search" placeholder="e.g. fraud_...">
-      </div>
-      <button id="filter-reset" class="btn-ghost">Reset filters</button>
-      <span id="active-crossfilter" class="crossfilter-chip" hidden></span>
+      <!-- JavaScript inserts the four summary cards into this empty container -->
+      <section class="kpi-row" id="kpi-cards"></section>
+
+      <!-- Responsive two-column grid containing the four coordinated D3 charts -->
+      <section class="chart-grid">
+        <!-- Heat map: selecting a cell drills into that day-and-hour slice -->
+        <article class="chart-card"><div class="card-heading"><div><p class="panel-kicker">Advanced view 1</p><h3>Fraud Rate by Hour × Day</h3></div><span class="hint">Select a cell to investigate</span></div><div id="chart-heatmap"></div></article>
+        <!-- Scatter plot matrix: compares amount, customer age and merchant distance -->
+        <article class="chart-card"><div class="card-heading"><div><p class="panel-kicker">Multivariate pattern</p><h3>Amount × Distance × Age</h3></div><span class="legend-inline"><i></i> Fraud alert</span></div><div id="chart-scatter"></div></article>
+        <!-- Category chart: selecting a bar cross-filters all Analyst components -->
+        <article class="chart-card"><div class="card-heading"><div><p class="panel-kicker">Category comparison</p><h3>Spend &amp; Fraud by Category</h3></div><span class="hint">Select a bar to filter</span></div><div id="chart-category"></div></article>
+        <!-- Line chart: summarises total spending by month -->
+        <article class="chart-card"><div class="card-heading"><div><p class="panel-kicker">Dynamic trend</p><h3>Monthly Spend Trend</h3></div></div><div id="chart-trend"></div></article>
+      </section>
+
+      <!-- Searchable transaction investigation area with sorting, pagination and CSV export -->
+      <section class="investigation-section">
+        <div class="investigation-heading">
+          <div><p class="eyebrow">Dynamic search and drill-down</p><h2>Transaction investigation</h2><p>Search the coordinated result set, sort any field, and open a record for full context.</p></div>
+          <div class="investigation-actions">
+            <label class="search-control"><span aria-hidden="true">⌕</span><input type="search" id="filter-search" placeholder="Search ID, merchant, city or job…"></label>
+            <button id="export-filtered" class="primary-action" type="button">⇩ Export filtered CSV</button>
+          </div>
+        </div>
+        <!-- drilldownTable.js creates the complete table inside this container -->
+        <div id="drilldown-table" class="table-card"></div>
+      </section>
     </section>
 
-    <section class="chart-grid">
-      <div class="chart-card">
-        <h3>Fraud Rate by Hour &times; Day <span class="hint">click a cell to drill down</span></h3>
-        <div id="chart-heatmap"></div>
-      </div>
-      <div class="chart-card">
-        <h3>Amount vs. Distance vs. Age <span class="hint">fraud highlighted in red</span></h3>
-        <div id="chart-scatter"></div>
-      </div>
-      <div class="chart-card">
-        <h3>Spend &amp; Fraud by Category <span class="hint">click a bar to filter everything</span></h3>
-        <div id="chart-category"></div>
-      </div>
-      <div class="chart-card">
-        <h3>Monthly Spend Trend</h3>
-        <div id="chart-trend"></div>
-      </div>
+    <!-- ===================== SIMPLIFIED VIEW ===================== -->
+    <!-- Hidden by default; larger typography and fewer controls reduce cognitive load -->
+    <section id="view-elderly" class="view" hidden>
+      <section class="section-intro"><div><p class="eyebrow">Clear and focused view</p><h2>Your spending at a glance</h2></div></section>
+      <section class="kpi-row kpi-row-large" id="kpi-cards-elderly"></section>
+      <section class="filters-bar filters-bar-large"><div class="filter-group"><label for="filter-range-elderly">Show me</label><select id="filter-range-elderly"><option value="1">This month</option><option value="3" selected>Last 3 months</option><option value="12">Last 12 months</option><option value="all">All time</option></select></div></section>
+      <section class="chart-card chart-card-large"><div class="card-heading"><div><p class="panel-kicker">Simple trend</p><h3>Your Spending Over Time</h3></div></div><div id="chart-trend-elderly"></div></section>
     </section>
 
-    <section class="table-card">
-      <h3>Transactions <span id="table-count" class="hint"></span></h3>
-      <div id="drilldown-table"></div>
+    <!-- ===================== MONEY HABITS VIEW ===================== -->
+    <!-- Child-friendly view combining an interactive donut with simple financial lessons -->
+    <section id="view-kids" class="view kids-view" hidden>
+      <section class="kids-hero"><span class="kids-badge">Money habits</span><h2>Where Does the Money Go? 💰</h2><p>Explore spending categories and discover the difference between needs, wants and saving.</p></section>
+      <section class="chart-card chart-card-large kids-card"><div id="chart-donut-kids"></div></section>
     </section>
-  </main>
 
-  <!-- ===================== ELDERLY / SIMPLIFIED VIEW ===================== -->
-  <main id="view-elderly" class="view" hidden>
-    <section class="kpi-row kpi-row-large" id="kpi-cards-elderly"></section>
-    <section class="filters-bar filters-bar-large">
-      <div class="filter-group">
-        <label for="filter-range-elderly">Show me</label>
-        <select id="filter-range-elderly">
-          <option value="1">This month</option>
-          <option value="3" selected>Last 3 months</option>
-          <option value="12">Last 12 months</option>
-          <option value="all">All time</option>
-        </select>
-      </div>
-    </section>
-    <section class="chart-card chart-card-large">
-      <h3>Your Spending Over Time</h3>
-      <div id="chart-trend-elderly"></div>
-    </section>
-  </main>
-
-  <!-- ===================== KIDS / MONEY HABITS VIEW ===================== -->
-  <main id="view-kids" class="view" hidden>
-    <section class="kids-hero">
-      <h2>Where Does the Money Go? &#128176;</h2>
-      <p>Every slice is something people spend money on!</p>
-    </section>
-    <section class="chart-card chart-card-large">
-      <div id="chart-donut-kids"></div>
+    <!-- ===================== PROJECT TIMELINE VIEW ===================== -->
+    <!-- Interactive Task 6 timeline: selecting a bar updates the detail panel -->
+    <section id="view-timeline" class="view" hidden>
+      <section class="section-intro timeline-heading"><div><p class="eyebrow">Interactive five-month delivery plan</p><h2>Project progress timeline</h2><p>March–July 2026 · select a phase to view its objective, work completed and evidence.</p></div><div class="timeline-status"><span></span> Presentation-ready</div></section>
+      <section class="timeline-layout">
+        <article class="chart-card timeline-panel"><div id="chart-timeline"></div></article>
+        <article class="chart-card timeline-detail" id="timeline-detail" aria-live="polite"></article>
+      </section>
     </section>
   </main>
 
-  <!-- ===================== PROJECT TIMELINE VIEW (Task 6) ===================== -->
-  <main id="view-timeline" class="view" hidden>
-    <section class="chart-card">
-      <h3>Project Progress Timeline <span class="hint">click a phase to see details</span></h3>
-      <div id="chart-timeline"></div>
-    </section>
-    <section class="chart-card timeline-detail" id="timeline-detail"></section>
-  </main>
+  <!-- Shared project information shown at the bottom of every view -->
+  <footer class="footer"><span>TFB3133/TEB3133 Data Visualization Project</span><span>Finance Domain · Fraud Detection &amp; Spending Patterns</span></footer>
 
-  <footer class="footer">
-    <span>TFB3133/TEB3133 Data Visualization Project &mdash; Finance Domain (Fraud Detection &amp; Spending Patterns)</span>
-  </footer>
+  <!-- Modal populated by drilldownTable.js when a Details button is selected -->
+  <dialog id="transaction-dialog" class="transaction-dialog"><button class="dialog-close" type="button" aria-label="Close details">×</button><div id="transaction-detail-content"></div></dialog>
+  <!-- Reusable tooltip layer for interactive visual elements -->
+  <div id="global-tooltip" class="tooltip" hidden></div>
 
+  <!-- ===================== JAVASCRIPT MODULES ===================== -->
+  <!-- Data utilities load first, followed by chart modules; main.js starts the application last -->
   <script src="js/data.js"></script>
   <script src="js/kpiCards.js"></script>
   <script src="js/heatmap.js"></script>

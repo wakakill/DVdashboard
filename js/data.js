@@ -5,6 +5,7 @@
 
 const DataUtils = {
 
+  // Convert CSV strings into the dates and numbers required by D3 calculations.
   parseRow(d) {
     return {
       trans_num: d.trans_num,
@@ -26,6 +27,7 @@ const DataUtils = {
     };
   },
 
+  // Load the CSV asynchronously and apply parseRow to every transaction.
   async load(path) {
     const raw = await d3.csv(path, this.parseRow);
     return raw;
@@ -33,6 +35,7 @@ const DataUtils = {
 
   // ---- Aggregation helpers, all operate on an array of parsed rows ----
 
+  // Summary values used by the KPI cards in two dashboard modes.
   kpis(rows) {
     const total = rows.length;
     const fraudCount = d3.sum(rows, d => d.is_fraud);
@@ -70,6 +73,7 @@ const DataUtils = {
     return { days, cells };
   },
 
+  // Produce count, spend and fraud measures for each merchant category.
   categorySummary(rows) {
     const grouped = d3.rollup(
       rows,
@@ -85,6 +89,7 @@ const DataUtils = {
       .sort((a, b) => b.totalSpend - a.totalSpend);
   },
 
+  // Group spending by the YYYY-MM field for chronological trend drawing.
   monthlyTrend(rows) {
     const grouped = d3.rollup(
       rows,
@@ -96,12 +101,15 @@ const DataUtils = {
   },
 
   // Sample down further for scatter plot rendering performance (browser-safe point count)
+  // Keep the scatter matrix responsive while preserving fraud visibility.
+  // Half of the display sample is reserved for fraud whenever possible.
   scatterSample(rows, n = 2000) {
     if (rows.length <= n) return rows;
     const fraud = rows.filter(d => d.is_fraud);
     const legit = rows.filter(d => !d.is_fraud);
-    const legitSampleN = Math.max(0, n - fraud.length);
-    const shuffled = d3.shuffle(legit.slice());
-    return fraud.concat(shuffled.slice(0, legitSampleN));
+    const fraudSampleN = Math.min(fraud.length, Math.round(n * 0.5));
+    const legitSampleN = Math.min(legit.length, n - fraudSampleN);
+    return d3.shuffle(fraud.slice()).slice(0, fraudSampleN)
+      .concat(d3.shuffle(legit.slice()).slice(0, legitSampleN));
   }
 };
